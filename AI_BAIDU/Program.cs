@@ -1,4 +1,5 @@
 ﻿using Baidu.Aip.Nlp;
+using Lucene.Net.Documents;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,20 @@ namespace AI_BAIDU
         static void Main(string[] args)
         {
             string[] paths = Directory.GetFiles(@"QuestionLibraries\", "*.xls");
+            while (true)
+            {
+                Console.WriteLine("请输入KEYWORD：");
+                string keyword = Console.ReadLine();
+                foreach (Document doc in LuceneFORnet.searchIndex(keyword, 10))
+                {
+                    Console.WriteLine("查询结果为：ID:{0},TITLE:{1};", doc.GetField("id").StringValue, doc.GetField("title").StringValue);
+                }
+            }
+            //foreach (string path in paths)
+            //{
+            //    List<Question> list = util.DatatableConvertToQuestion(util.ExcelToDataTable(path, true));
+            //    List<Document> listDOC = LuceneFORnet.WriterIndex(list);
+            //}
             /* 短文本相似度,最大512字节（256字符）,
              CNN（卷积神经网络）模型
              模型语义泛化能力介于 BOW / RNN 之间，对序列输入敏感，相较于 GRNN 模型的一个显著优点是计算效率会更高些。
@@ -36,13 +51,13 @@ namespace AI_BAIDU
               var options = new Dictionary<string, object> { { "model", "GRNN" } };
               带参数调用短文本相似度
              result = client.Simnet(text1, text2, options);*/
-            int count, allcount = 0;
-            foreach (string path in paths)
-            {
-                util.Simnet(path, @"Simnet\", @"Simnet\SimnetError.txt", out count);
-                allcount += count;
-            }
-            Console.WriteLine("共完成短文本相似度计算{0}条。", allcount);
+            //int count, allcount = 0;
+            //foreach (string path in paths)
+            //{
+            //    util.Simnet(path, @"Simnet\", @"Simnet\SimnetError.txt", out count);
+            //    allcount += count;
+            //}
+            //Console.WriteLine("共完成短文本相似度计算{0}条。", allcount);
 
             /*** 2020年4月23日桐城兴尔旺
              * 下面部分是短文本纠错的内容，
