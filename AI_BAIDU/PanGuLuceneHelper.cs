@@ -123,6 +123,26 @@ namespace AI_BAIDU
             return true;
         }
         #endregion
+        public TopDocs Search(string keyword, int count)
+        {
+            string[] fileds = { "title", "content" };//查询字段
+                                                     //Stopwatch st = new Stopwatch();
+                                                     //st.Start();
+            QueryParser parser = null;// new QueryParser(Lucene.Net.Util.Version.LUCENE_30, field, analyzer);//一个字段查询
+            parser = new MultiFieldQueryParser(version, fileds, analyzer);//多个字段查询
+            Query query = parser.Parse(keyword);
+            //int n = 1000;
+            IndexSearcher searcher = new IndexSearcher(directory_luce, true);//true-表示只读
+            TopDocs docs = searcher.Search(query, (Filter)null, count);
+            if (docs == null || docs.TotalHits == 0)
+            {
+                return null;
+            }
+            else
+            {
+                return docs;
+            }
+        }
 
         #region 在title和content字段中查询数据
         /// <summary>
@@ -132,7 +152,6 @@ namespace AI_BAIDU
         /// <returns></returns>
         public List<MySearchUnit> Search(string keyword)
         {
-
             string[] fileds = { "title", "content" };//查询字段
             //Stopwatch st = new Stopwatch();
             //st.Start();
@@ -289,14 +308,52 @@ namespace AI_BAIDU
 
             IndexWriter writer = new IndexWriter(directory_luce, analyzer, false, IndexWriter.MaxFieldLength.LIMITED);
             writer.DeleteDocuments(term); // writer.DeleteDocuments(term)或者writer.DeleteDocuments(query);
-            ////writer.DeleteAll();
+                                          ////writer.DeleteAll();
             writer.Commit();
             //writer.Optimize();//
             IsSuccess = writer.HasDeletions();
             writer.Dispose();
             return IsSuccess;
         }
+        private bool Delete(string id, IndexWriter writer)
+        {
+            bool IsSuccess = false;
+            Term term = new Term("id", id);
+            writer.DeleteDocuments(term); // writer.DeleteDocuments(term)或者writer.DeleteDocuments(query);
+            writer.Commit();
+            IsSuccess = writer.HasDeletions();
+            //writer.Dispose();
+            return IsSuccess;
+        }
+        /// <summary>
+        /// Lucene并没有提供更新，这里的更新操作其实是如下两个操作的合集 先删除之后再添加
+        /// </summary>
+        /// <param name="mySearchUnit"></param>
+        /// <returns></returns>
         #endregion
+        public bool Update(MySearchUnit mySearchUnit, out bool IsDeleted)
+        {
+            bool IsSuccess = false;
+            IndexWriter writer = null;
+            IndexSearcher searcher = new IndexSearcher(directory_luce, true);
+            try
+            {
+                writer = new IndexWriter(directory_luce, analyzer, false, IndexWriter.MaxFieldLength.LIMITED);//false表示追加（true表示删除之前的重新写入）
+            }
+            catch
+            {
+                writer = new IndexWriter(directory_luce, analyzer, true, IndexWriter.MaxFieldLength.LIMITED);//false表示追加（true表示删除之前的重新写入）
+            }
+            finally
+            {
+                IsDeleted = Delete(mySearchUnit.id, writer);
+                bool iscreate = CreateIndex(writer, mySearchUnit);
+                if (IsDeleted && iscreate) IsSuccess = true;
+                writer.Optimize();
+                writer.Dispose();
+            }
+            return IsSuccess;
+        }
 
         #region 删除全部索引数据
         /// <summary>
@@ -370,7 +427,7 @@ namespace AI_BAIDU
                 //if (_analyzer == null)
                 {
                     _analyzer = new PanGuAnalyzer();//盘古分词分析器
-                    //_analyzer = new StandardAnalyzer(Lucene.Net.Util.Version.LUCENE_30);//标准分析器
+                                                    //_analyzer = new StandardAnalyzer(Lucene.Net.Util.Version.LUCENE_30);//标准分析器
                 }
                 return _analyzer;
             }
